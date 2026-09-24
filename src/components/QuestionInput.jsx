@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { m } from "framer-motion";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -24,6 +25,7 @@ function QuestionInput({
   const [detail, setDetail] = useState({ name: "", phone: "", company: "", note: "" });
   const [detailStatus, setDetailStatus] = useState("idle");
   const [detailMessage, setDetailMessage] = useState("");
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const controlled = inputValue !== undefined;
   const email = controlled ? inputValue : internalValue;
   const scrollLockRef = useRef(null);
@@ -58,6 +60,14 @@ function QuestionInput({
     () => releaseScrollLock,
     [],
   );
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+    const updateViewport = () => setIsMobileViewport(media.matches);
+    updateViewport();
+    media.addEventListener("change", updateViewport);
+    return () => media.removeEventListener("change", updateViewport);
+  }, []);
 
   const updateEmail = (value) => {
     if (controlled && onInputChange) onInputChange(value);
@@ -145,7 +155,7 @@ function QuestionInput({
   };
 
   if (status === "detail" || status === "duplicate" || status === "done") {
-    return (
+    const detailContent = (
       <m.div
         className={`waitlist-detail ${compact ? "waitlist-detail--compact" : ""} ${lockScrollOnFocus ? "waitlist-detail--hero" : ""}`}
         style={{ maxWidth }}
@@ -234,6 +244,10 @@ function QuestionInput({
         </div>
       </m.div>
     );
+
+    return lockScrollOnFocus && isMobileViewport
+      ? createPortal(detailContent, document.body)
+      : detailContent;
   }
 
   return (
