@@ -28,6 +28,12 @@ function QuestionInput({
   const email = controlled ? inputValue : internalValue;
   const scrollLockRef = useRef(null);
 
+  const releaseScrollLock = () => {
+    if (!scrollLockRef.current) return;
+    window.removeEventListener("scroll", scrollLockRef.current);
+    scrollLockRef.current = null;
+  };
+
   // iOS scrolls a focused input into view, but the hero is position:sticky so
   // the page runs to the bottom of the sticky track instead. Pin scroll while
   // any field in this form is focused; release when focus leaves the form.
@@ -43,17 +49,13 @@ function QuestionInput({
 
   const unlockScroll = (event) => {
     if (event.currentTarget.contains(event.relatedTarget)) return;
-    if (!scrollLockRef.current) return;
-    window.removeEventListener("scroll", scrollLockRef.current);
-    scrollLockRef.current = null;
+    releaseScrollLock();
   };
 
   const focusGuards = lockScrollOnFocus ? { onFocus: lockScroll, onBlur: unlockScroll } : {};
 
   useEffect(
-    () => () => {
-      if (scrollLockRef.current) window.removeEventListener("scroll", scrollLockRef.current);
-    },
+    () => releaseScrollLock,
     [],
   );
 
@@ -99,6 +101,7 @@ function QuestionInput({
       setSubmittedEmail(normalizedEmail);
       setDetailStatus("idle");
       setDetailMessage("");
+      releaseScrollLock();
       if (result.duplicate) {
         setStatus("duplicate");
         setMessage("이미 신청된 이메일이에요. 오픈 이벤트 초대를 기다려주세요.");
@@ -144,7 +147,7 @@ function QuestionInput({
   if (status === "detail" || status === "duplicate" || status === "done") {
     return (
       <m.div
-        className={`waitlist-detail ${compact ? "waitlist-detail--compact" : ""}`}
+        className={`waitlist-detail ${compact ? "waitlist-detail--compact" : ""} ${lockScrollOnFocus ? "waitlist-detail--hero" : ""}`}
         style={{ maxWidth }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -152,7 +155,7 @@ function QuestionInput({
       >
         <div className="waitlist-detail-card">
           {status === "detail" ? (
-            <form className="waitlist-detail-form" onSubmit={handleDetailSubmit} {...focusGuards}>
+            <form className="waitlist-detail-form" onSubmit={handleDetailSubmit}>
               <p className="waitlist-detail-title">거의 다 됐어요! 추가 정보를 입력하면 신청이 완료됩니다</p>
               <input
                 type="email"
